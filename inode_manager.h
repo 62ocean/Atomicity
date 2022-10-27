@@ -40,6 +40,11 @@ class block_manager {
   block_manager();
   struct superblock sb;
 
+  //blockid：block的index
+  bool isfree_block(blockid_t blockid, char *buf);
+  void setbit_block(blockid_t blockid, char *buf);
+  void freebit_block(blockid_t blockid, char *buf);
+
   uint32_t alloc_block();
   void free_block(uint32_t id);
   void read_block(uint32_t id, char *buf);
@@ -56,6 +61,9 @@ class block_manager {
 
 // Block containing inode i
 #define IBLOCK(i, nblocks)     ((nblocks)/BPB + (i)/IPB + 3)
+
+//最开始的一个data block
+#define DATA_BLOCK0 IBLOCK(INODE_NUM, BLOCK_NUM) + 1
 
 // Bitmap bits per block
 #define BPB           (BLOCK_SIZE*8)
@@ -81,6 +89,9 @@ class inode_manager {
   block_manager *bm;
   struct inode* get_inode(uint32_t inum);
   void put_inode(uint32_t inum, struct inode *ino);
+
+  blockid_t indirect_blockid(int index, char *buf);
+  void set_indirect_blockid(int index, blockid_t newid, char *buf);
 
  public:
   inode_manager();
