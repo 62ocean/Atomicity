@@ -66,7 +66,13 @@ bool
 chfs_client::isdir(inum inum)
 {
     // Oops! is this still correct when you implement symlink?
-    return ! isfile(inum);
+    extent_protocol::attr a;
+
+    if (ec->getattr(inum, a) != extent_protocol::OK) {
+        printf("error getting attr\n");
+        return false;
+    }
+    return (a.type == extent_protocol::T_DIR);
 }
 
 int
@@ -161,7 +167,7 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
      */
 
     //没有考虑操作失败的情况
-    std::cout << parent << ' ' << std::string(name) << std::endl;
+    // std::cout << parent << ' ' << std::string(name) << std::endl;
 
     //检查文件是否已经存在，如存在返回EXIST
     bool is_exist = false; inum ino;
@@ -170,7 +176,7 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
         return EXIST;
     }
 
-    std::cout << parent << ' ' << std::string(name) << std::endl;
+    // std::cout << parent << ' ' << std::string(name) << std::endl;
 
     ec->create(extent_protocol::T_FILE, ino_out); //最好检查一下操作是否成功
 
@@ -206,6 +212,24 @@ chfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &ino_out)
      * note: lookup is what you need to check if directory exist;
      * after create file or dir, you must remember to modify the parent infomation.
      */
+    bool found;
+    lookup(parent, name, found, ino_out);
+    if (found) {
+        r = EXIST;
+        return r;
+    }
+
+    ec->create(extent_protocol::T_DIR, ino_out); 
+
+    std::string dir;
+    ec->get(parent, dir);
+
+    char dir_entry[ENTRY_SIZE] = {0};
+    strcpy(dir_entry, name);
+    *(inum *)(dir_entry + ENTRY_SIZE - 8) = ino_out;
+
+    dir.append(dir_entry, ENTRY_SIZE);
+    ec->put(parent, dir);
 
 
     return r;
@@ -224,14 +248,14 @@ chfs_client::lookup(inum parent, const char *name, bool &found, inum &ino_out)
     std::string dir;
     ec->get(parent, dir);
     std::string filename(name);
-    // std::cout << "look up filename: " << filename << std::endl;
+    // std::cout << "look up filename: " << name << std::endl;
 
     found = false;
 
     for (int i = 0; i < dir.size(); i += ENTRY_SIZE) {
         // std::cout << dir.substr(i, filename.size()) << std::endl;
-        // std::cout << *(inum *)(dir.c_str() + i + ENTRY_SIZE - 8) << ' ';
-        if (dir.compare(i, filename.size(), filename) == 0) {
+        // std::cout << std::string(filename).substr(0, ENTRY_SIZE - 8) << std::endl;
+        if (dir.compare(i, filename.size(), filename) == 0 && dir[i + filename.size()] == '\0') {
             found = true;
             ino_out = *(inum *)(dir.c_str() + i + ENTRY_SIZE - 8);
             // std::cout << "found ino: " << ino_out << std::endl;
@@ -340,6 +364,37 @@ int chfs_client::unlink(inum parent,const char *name)
 {
     int r = OK;
 
+    //检查是否有该文件
+    bool found;
+    inum ino;
+    lookup(parent, name, found, ino);
+    if (!found) {
+        r = NOENT;
+        return r;
+    }
+    //检查该文件是否为目录
+    extent_protocol::attr a;
+    ec->getattr(ino, a);
+    if (a.type == extent_protocol::T_DIR) {
+        r = NOTEMPTY;
+        return r;
+    }
+
+
+    //在目录中删除entry
+    std::string dir;
+    ec->get(parent, dir);
+
+    // std::string filename(name);
+    // filename.push_back('\0');  //为避免-2与-20混淆
+    size_t entry_pos = dir.find(name);
+    dir.erase(entry_pos, ENTRY_SIZE);
+
+    ec->put(parent, dir);
+
+    //删除文件
+    ec->remove(ino);
+
     /*
      * your code goes here.
      * note: you should remove the file using ec->remove,
@@ -348,4 +403,44 @@ int chfs_client::unlink(inum parent,const char *name)
 
     return r;
 }
+
+int chfs_client::symlink(const char *link, inum parent, const char * name, inum &ino)
+{
+    int r = OK;
+
+    // bool found;
+    // lookup(parent, name, found, ino_out);
+    // if (found) {
+    //     r = EXIST;
+    //     return r;
+    // }
+
+    ec->create(extent_protocol::T_LINK, ino); 
+    ec->put(ino, std::string(link));
+    std::cout << "1\n";
+
+    std::string dir;
+    ec->get(parent, dir);
+    std::cout << "2\n";
+
+    char dir_entry[ENTRY_SIZE] = {0};
+    strcpy(dir_entry, name);
+    *(inum *)(dir_entry + ENTRY_SIZE - 8) = ino;
+    std::cout << "3\n";
+
+    dir.append(dir_entry, ENTRY_SIZE);
+    ec->put(parent, dir);
+    std::cout << "4\n";
+
+
+    return r;
+
+}
+
+int chfs_client::readlink(inum ino, std::string &link)
+{
+    ec->get(ino, link);
+}
+
+//lookup需要显式调用吗？ fuse会自己处理吧？
 

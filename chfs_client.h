@@ -14,7 +14,7 @@ class chfs_client {
  public:
 
   typedef unsigned long long inum;
-  enum xxstatus { OK, RPCERR, NOENT, IOERR, EXIST };
+  enum xxstatus { OK, RPCERR, NOENT, IOERR, EXIST, NOTEMPTY };
   typedef int status;
 
   struct fileinfo {
@@ -55,6 +55,8 @@ class chfs_client {
   int read(inum, size_t, off_t, std::string &);
   int unlink(inum,const char *);
   int mkdir(inum , const char *, mode_t , inum &);
+  int symlink(const char *, inum, const char *, inum &);
+  int readlink(inum, std::string &);
   
   /** you may need to add symbolic link related methods here.*/
 };
