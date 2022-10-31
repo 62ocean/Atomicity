@@ -104,22 +104,24 @@ public:
         //如有复制对象的析构，则指针指向的对象也会被析构，被复制对象无法再引用
         //删除对象时手动析构这部分吧！
 
-        //（看看智能指针
-        
+        //（看看智能指针  
     }
 
     uint64_t size() const {
         uint64_t s = sizeof(cmd_type) + sizeof(txid_t);
-        if (type == CMD_CREATE || type == CMD_REMOVE) {
-            s += sizeof(uint32_t) + sizeof(extent_protocol::extentid_t);
+        if (type == CMD_CREATE) {
+            s += sizeof(uint32_t);
+        } else if (type == CMD_REMOVE) {
+            s += sizeof(extent_protocol::extentid_t);
         } else if (type == CMD_PUT) {
-            s += 2 * (sizeof(extent_protocol::extentid_t) + sizeof(size_t))
-                + ((act::put_action *)redo_act)->buf.size() + ((act::put_action *)undo_act)->buf.size();
+            s += sizeof(extent_protocol::extentid_t) + sizeof(size_t)
+                + ((act::put_action *)redo_act)->buf.size();
         }
         return s;
     }
 
     std::string transfer() const {
+        
         char log[MAX_LOG_SZ];
         int offset = 0;
 
@@ -132,15 +134,15 @@ public:
             *(uint32_t *)(log+offset) = ((act::create_action *)redo_act)->type; 
             // std::cout << "type: " << ((act::create_action *)redo_act)->type << std::endl;
             offset += sizeof(uint32_t);
-            *(extent_protocol::extentid_t *)(log+offset) = ((act::remove_action *)undo_act)->eid; 
+            // *(extent_protocol::extentid_t *)(log+offset) = ((act::remove_action *)undo_act)->eid; 
             // std::cout << "eid: " << ((act::remove_action *)undo_act)->eid << std::endl;
-            offset += sizeof(extent_protocol::extentid_t);
+            // offset += sizeof(extent_protocol::extentid_t);
 
         } else if (type == CMD_REMOVE) {
             *(extent_protocol::extentid_t *)(log+offset) = ((act::remove_action *)redo_act)->eid; 
             offset += sizeof(extent_protocol::extentid_t);
-            *(uint32_t *)(log+offset) = ((act::create_action *)undo_act)->type; 
-            offset += sizeof(uint32_t);
+            // *(uint32_t *)(log+offset) = ((act::create_action *)undo_act)->type; 
+            // offset += sizeof(uint32_t);
 
         } else if (type == CMD_PUT) {
             *(extent_protocol::extentid_t *)(log+offset) = ((act::put_action *)redo_act)->eid;
@@ -151,14 +153,16 @@ public:
             memcpy(log+offset, ((act::put_action *)redo_act)->buf.c_str(), ((act::put_action *)redo_act)->buf.size());
             offset += ((act::put_action *)redo_act)->buf.size();
 
-            *(extent_protocol::extentid_t *)(log+offset) = ((act::put_action *)undo_act)->eid;
-            offset += sizeof(extent_protocol::extentid_t);
-            *(size_t *)(log+offset) = ((act::put_action *)undo_act)->buf.size();
-            offset += sizeof(size_t);
+            // *(extent_protocol::extentid_t *)(log+offset) = ((act::put_action *)undo_act)->eid;
+            // offset += sizeof(extent_protocol::extentid_t);
+            // *(size_t *)(log+offset) = ((act::put_action *)undo_act)->buf.size();
+            // offset += sizeof(size_t);
             // // std::cout << "string: " << ((act::put_action *)undo_act)->buf << std::endl;
-            memcpy(log+offset, ((act::put_action *)undo_act)->buf.c_str(), ((act::put_action *)undo_act)->buf.size());
-            offset += ((act::put_action *)undo_act)->buf.size();
+            // memcpy(log+offset, ((act::put_action *)undo_act)->buf.c_str(), ((act::put_action *)undo_act)->buf.size());
+            // offset += ((act::put_action *)undo_act)->buf.size();
         }
+
+        // delete [] log; <----不能在这里释放空间，下面的return要用到！！！
         
         return std::string(log, size());
     }
@@ -228,8 +232,13 @@ void persister<command>::append_log(const command& log) {
     
     //open和write必须要在同一个函数中，但是why？
     std::ofstream outFile(file_path_logfile, std::ios::binary | std::ios::app);
+    std::cout << file_path_logfile << std::endl;
+    if (!outFile) std::cout << "open file error!!!\n";
     
     std::string log_str = log.transfer();
+    std::cout << log_str << std::endl;
+    // int a = 1;
+    // outFile.write((char *)&a, sizeof(int));
     outFile.write((char *)log_str.c_str(), log_str.size());
 
     outFile.close();
@@ -268,22 +277,22 @@ void persister<command>::restore_logdata(extent_server *es) {
             extent_protocol::extentid_t eid;
             inFile.read((char *)&type, sizeof(uint32_t));
             // std::cout << "create type: " << type << std::endl;
-            inFile.read((char *)&eid, sizeof(extent_protocol::extentid_t));
+            // inFile.read((char *)&eid, sizeof(extent_protocol::extentid_t));
             // std::cout << "remove eid: " << eid << std::endl;
             // log_entries.push_back(chfs_command(ty, id, new act::create_action(type), new act::remove_action(eid)));
             log_entries.back().redo_act = new act::create_action(type);
-            log_entries.back().undo_act = new act::remove_action(eid);
+            // log_entries.back().undo_act = new act::remove_action(eid);
 
         } else if (ty == chfs_command::CMD_REMOVE) {
             uint32_t type;
             extent_protocol::extentid_t eid;
             inFile.read((char *)&eid, sizeof(extent_protocol::extentid_t));
             // std::cout << "remove eid: " << eid << std::endl;
-            inFile.read((char *)&type, sizeof(uint32_t));
+            // inFile.read((char *)&type, sizeof(uint32_t));
             // std::cout << "create type: " << type << std::endl;
             // log_entries.push_back(chfs_command(ty, id, new act::remove_action(eid), new act::create_action(type)));
             log_entries.back().redo_act = new act::remove_action(eid);
-            log_entries.back().undo_act = new act::create_action(type);
+            // log_entries.back().undo_act = new act::create_action(type);
 
         } else if (ty == chfs_command::CMD_PUT) {
             extent_protocol::extentid_t eid;
@@ -305,21 +314,21 @@ void persister<command>::restore_logdata(extent_server *es) {
             }
             
 
-            inFile.read((char *)&eid, sizeof(extent_protocol::extentid_t));
-            // std::cout << "put eid: " << eid << std::endl;
-            inFile.read((char *)&len, sizeof(size_t));
-            // std::cout << "string len: " << len << std::endl;
-            if (len) {
-                char *buf = new char [len];
-                inFile.read((char *)buf, len);
-                // // std::cout << "undo string: " << std::string(buf, len) << std::endl;
-                log_entries.back().undo_act = new act::put_action(eid, std::string(buf, len));
-                delete [] buf;
-            } else {
-                // std::cout << "empty string" << std::endl;
-                log_entries.back().undo_act = new act::put_action(eid, std::string(""));
-                // std::cout << "empty string222" << std::endl;
-            }
+            // inFile.read((char *)&eid, sizeof(extent_protocol::extentid_t));
+            // // std::cout << "put eid: " << eid << std::endl;
+            // inFile.read((char *)&len, sizeof(size_t));
+            // // std::cout << "string len: " << len << std::endl;
+            // if (len) {
+            //     char *buf = new char [len];
+            //     inFile.read((char *)buf, len);
+            //     // // std::cout << "undo string: " << std::string(buf, len) << std::endl;
+            //     log_entries.back().undo_act = new act::put_action(eid, std::string(buf, len));
+            //     delete [] buf;
+            // } else {
+            //     // std::cout << "empty string" << std::endl;
+            //     log_entries.back().undo_act = new act::put_action(eid, std::string(""));
+            //     // std::cout << "empty string222" << std::endl;
+            // }
         }
         // std::cout << std::endl;
     }
@@ -332,6 +341,13 @@ void persister<command>::restore_logdata(extent_server *es) {
         // }
         cmd.redo_act->perform(es);
     }
+
+    //restore后释放掉log_entry的内存
+    for (chfs_command cmd : log_entries) {
+        if (cmd.redo_act) delete cmd.redo_act;
+        if (cmd.undo_act) delete cmd.undo_act;
+    }
+    log_entries.clear();
 
 };
 

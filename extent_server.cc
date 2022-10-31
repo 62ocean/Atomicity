@@ -15,9 +15,7 @@
 extent_server::extent_server() 
 {
   im = new inode_manager();
-  // std::cout << "qqqqqq" << std::endl;
   _persister = new chfs_persister("log"); // DO NOT change the dir name here
-  // std::cout << "kkkkkk" << std::endl;
   
   // Your code here for Lab2A: recover data on startup
   _persister->restore_logdata(this);
@@ -30,12 +28,12 @@ int extent_server::create(uint32_t type, extent_protocol::extentid_t &id, bool i
     printf("log extent_server: create inode\n");
     chfs_command cmd(chfs_command::CMD_CREATE, 0);
     cmd.redo_act = new act::create_action(type);
-    cmd.undo_act = new act::remove_action(id);
+    // cmd.undo_act = new act::remove_action(id);
     std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
     std::cout << id << std::endl;
     _persister->append_log(cmd);
 
-    // delete cmd.redo_act; 
+    if (cmd.redo_act) cmd.redo_act; 
     // delete cmd.undo_act;
   }
 
@@ -55,13 +53,13 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &, b
     // get(id, old_content);
     chfs_command cmd(chfs_command::CMD_PUT, 0);
     cmd.redo_act = new act::put_action(id, buf);
-    cmd.undo_act = new act::put_action(id, old_content);
+    // cmd.undo_act = new act::put_action(id, old_content);
     std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
     // std::cout << buf.size() << ' ' << buf << std::endl;
     
     _persister->append_log(cmd);
 
-    // delete cmd.redo_act; 
+    if (cmd.redo_act) delete cmd.redo_act; 
     // delete cmd.undo_act;
     std::cout << "after log\n";
   }
@@ -123,11 +121,11 @@ int extent_server::remove(extent_protocol::extentid_t id, int &, bool iflog)
     getattr(id, attr);
     chfs_command cmd(chfs_command::CMD_REMOVE, 0);
     cmd.redo_act = new act::remove_action(id);
-    cmd.undo_act = new act::create_action(attr.type);
+    // cmd.undo_act = new act::create_action(attr.type);
     std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
     _persister->append_log(cmd);
 
-    // delete cmd.redo_act; 
+    if (cmd.redo_act) delete cmd.redo_act; 
     // delete cmd.undo_act;
   }
   
