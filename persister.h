@@ -108,7 +108,6 @@ public:
         
     }
 
-    //log的长度（不含log的size）
     uint64_t size() const {
         uint64_t s = sizeof(cmd_type) + sizeof(txid_t);
         if (type == CMD_CREATE || type == CMD_REMOVE) {
