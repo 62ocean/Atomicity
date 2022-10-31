@@ -8,7 +8,11 @@
 #include "extent_protocol.h"
 
 #include "inode_manager.h"
-#include "persister.h"
+
+template<typename command>
+class persister;
+class chfs_command;
+using chfs_persister = persister<chfs_command>;
 
 class extent_server {
  protected:
@@ -25,11 +29,11 @@ class extent_server {
  public:
   extent_server();
 
-  int create(uint32_t type, extent_protocol::extentid_t &id);
-  int put(extent_protocol::extentid_t id, std::string, int &);
+  int create(uint32_t type, extent_protocol::extentid_t &id, bool iflog = true);
+  int put(extent_protocol::extentid_t id, std::string, int &, bool iflog = true);
   int get(extent_protocol::extentid_t id, std::string &);
   int getattr(extent_protocol::extentid_t id, extent_protocol::attr &);
-  int remove(extent_protocol::extentid_t id, int &);
+  int remove(extent_protocol::extentid_t id, int &, bool iflog = true);
 
   // Your code here for lab2A: add logging APIs
 };

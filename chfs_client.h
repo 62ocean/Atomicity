@@ -6,7 +6,7 @@
 #include "extent_client.h"
 #include <vector>
 
-#define ENTRY_SIZE 128
+#define ENTRY_SIZE 68
 
 
 class chfs_client {

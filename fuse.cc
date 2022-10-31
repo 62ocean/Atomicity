@@ -432,7 +432,7 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
         if (r == chfs_client::NOENT) {
             fuse_reply_err(req, ENOENT);
         } else {
-            fuse_reply_err(req, ENOTEMPTY);
+            fuse_reply_err(req, EISDIR);
         }
     }
 }

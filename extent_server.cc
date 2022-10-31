@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fstream>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -14,13 +15,30 @@
 extent_server::extent_server() 
 {
   im = new inode_manager();
+  // std::cout << "qqqqqq" << std::endl;
   _persister = new chfs_persister("log"); // DO NOT change the dir name here
-
+  // std::cout << "kkkkkk" << std::endl;
+  
   // Your code here for Lab2A: recover data on startup
+  _persister->restore_logdata(this);
 }
 
-int extent_server::create(uint32_t type, extent_protocol::extentid_t &id)
+int extent_server::create(uint32_t type, extent_protocol::extentid_t &id, bool iflog)
 {
+  // prepare log entry
+  if (iflog) {
+    printf("log extent_server: create inode\n");
+    chfs_command cmd(chfs_command::CMD_CREATE, 0);
+    cmd.redo_act = new act::create_action(type);
+    cmd.undo_act = new act::remove_action(id);
+    std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
+    std::cout << id << std::endl;
+    _persister->append_log(cmd);
+
+    // delete cmd.redo_act; 
+    // delete cmd.undo_act;
+  }
+
   // alloc a new inode and return inum
   printf("extent_server: create inode\n");
   id = im->alloc_inode(type);
@@ -28,8 +46,27 @@ int extent_server::create(uint32_t type, extent_protocol::extentid_t &id)
   return extent_protocol::OK;
 }
 
-int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
+int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &, bool iflog)
 {
+  // prepare log entry
+  if (iflog) {
+    printf("log extent_server: put %lld\n", id);
+    std::string old_content;
+    // get(id, old_content);
+    chfs_command cmd(chfs_command::CMD_PUT, 0);
+    cmd.redo_act = new act::put_action(id, buf);
+    cmd.undo_act = new act::put_action(id, old_content);
+    std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
+    // std::cout << buf.size() << ' ' << buf << std::endl;
+    
+    _persister->append_log(cmd);
+
+    // delete cmd.redo_act; 
+    // delete cmd.undo_act;
+    std::cout << "after log\n";
+  }
+  
+
   printf("extent_server: put %lld\n", id);
   // std::cout << buf << std::endl;
   id &= 0x7fffffff;
@@ -58,6 +95,8 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
     free(cbuf);
   }
 
+  // std::cout << buf << std::endl;
+
   return extent_protocol::OK;
 }
 
@@ -75,8 +114,24 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
   return extent_protocol::OK;
 }
 
-int extent_server::remove(extent_protocol::extentid_t id, int &)
+int extent_server::remove(extent_protocol::extentid_t id, int &, bool iflog)
 {
+  // prepare log entry
+  if (iflog) {
+    printf("log extent_server: remove %lld\n", id);
+    extent_protocol::attr attr;
+    getattr(id, attr);
+    chfs_command cmd(chfs_command::CMD_REMOVE, 0);
+    cmd.redo_act = new act::remove_action(id);
+    cmd.undo_act = new act::create_action(attr.type);
+    std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
+    _persister->append_log(cmd);
+
+    // delete cmd.redo_act; 
+    // delete cmd.undo_act;
+  }
+  
+
   printf("extent_server: remove %lld\n", id);
 
   id &= 0x7fffffff;

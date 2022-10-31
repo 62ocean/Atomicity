@@ -10,6 +10,7 @@
 extent_client::extent_client()
 {
   es = new extent_server();
+  
 }
 
 extent_protocol::status
@@ -39,7 +40,7 @@ extent_client::getattr(extent_protocol::extentid_t eid,
 
 extent_protocol::status
 extent_client::put(extent_protocol::extentid_t eid, std::string buf)
-{
+{ 
   extent_protocol::status ret = extent_protocol::OK;
   int r;
   ret = es->put(eid, buf, r);

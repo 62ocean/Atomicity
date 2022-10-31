@@ -170,6 +170,8 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
 {
     int r = OK;
 
+    // std::cout << "file name size: " <<  std::string(name).size() << std::endl;
+
     /*
      * your code goes here.
      * note: lookup is what you need to check if file exist;
@@ -294,6 +296,7 @@ chfs_client::readdir(inum dir, std::list<dirent> &list)
 
     for (int i = 0; i < dir_list.size(); i += ENTRY_SIZE) {
         std::string filename(dir_list.c_str() + i);
+        // std::cout << filename << std::endl;
         dirent dir_entry;
         dir_entry.name = filename;
         dir_entry.inum = *(inum *)(dir_list.c_str() + i + ENTRY_SIZE - 8);
@@ -377,21 +380,21 @@ int chfs_client::unlink(inum parent,const char *name)
 {
     int r = OK;
 
-    //检查是否有该文件
+    // //检查是否有该文件
     bool found;
     inum ino;
     lookup(parent, name, found, ino);
-    if (!found) {
-        r = NOENT;
-        return r;
-    }
-    //检查该文件是否为目录
-    extent_protocol::attr a;
-    ec->getattr(ino, a);
-    if (a.type == extent_protocol::T_DIR) {
-        r = NOTEMPTY;
-        return r;
-    }
+    // if (!found) {
+    //     r = NOENT;
+    //     return r;
+    // }
+    // //检查该文件是否为目录
+    // extent_protocol::attr a;
+    // ec->getattr(ino, a);
+    // if (a.type == extent_protocol::T_DIR) {
+    //     r = NOTEMPTY;
+    //     return r;
+    // }
 
 
     //在目录中删除entry
@@ -430,20 +433,16 @@ int chfs_client::symlink(const char *link, inum parent, const char * name, inum 
 
     ec->create(extent_protocol::T_LINK, ino); 
     ec->put(ino, std::string(link));
-    std::cout << "1\n";
 
     std::string dir;
     ec->get(parent, dir);
-    std::cout << "2\n";
 
     char dir_entry[ENTRY_SIZE] = {0};
     strcpy(dir_entry, name);
     *(inum *)(dir_entry + ENTRY_SIZE - 8) = ino;
-    std::cout << "3\n";
 
     dir.append(dir_entry, ENTRY_SIZE);
     ec->put(parent, dir);
-    std::cout << "4\n";
 
 
     return r;
