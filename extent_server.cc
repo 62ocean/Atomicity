@@ -18,7 +18,7 @@ extent_server::extent_server()
   _persister = new chfs_persister("log"); // DO NOT change the dir name here
   
   // Your code here for Lab2A: recover data on startup
-  _persister->restore_logdata(this);
+  _persister->restore_logdata(this, txid);
 }
 
 int extent_server::create(uint32_t type, extent_protocol::extentid_t &id, bool iflog)
@@ -26,14 +26,14 @@ int extent_server::create(uint32_t type, extent_protocol::extentid_t &id, bool i
   // prepare log entry
   if (iflog) {
     printf("log extent_server: create inode\n");
-    chfs_command cmd(chfs_command::CMD_CREATE, 0);
+    chfs_command cmd(chfs_command::CMD_CREATE, txid);
     cmd.redo_act = new act::create_action(type);
     // cmd.undo_act = new act::remove_action(id);
     std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
     std::cout << id << std::endl;
     _persister->append_log(cmd);
 
-    if (cmd.redo_act) cmd.redo_act; 
+    if (cmd.redo_act) delete cmd.redo_act; 
     // delete cmd.undo_act;
   }
 
@@ -51,7 +51,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &, b
     printf("log extent_server: put %lld\n", id);
     std::string old_content;
     // get(id, old_content);
-    chfs_command cmd(chfs_command::CMD_PUT, 0);
+    chfs_command cmd(chfs_command::CMD_PUT, txid);
     cmd.redo_act = new act::put_action(id, buf);
     // cmd.undo_act = new act::put_action(id, old_content);
     std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
@@ -119,7 +119,7 @@ int extent_server::remove(extent_protocol::extentid_t id, int &, bool iflog)
     printf("log extent_server: remove %lld\n", id);
     extent_protocol::attr attr;
     getattr(id, attr);
-    chfs_command cmd(chfs_command::CMD_REMOVE, 0);
+    chfs_command cmd(chfs_command::CMD_REMOVE, txid);
     cmd.redo_act = new act::remove_action(id);
     // cmd.undo_act = new act::create_action(attr.type);
     std::cout << cmd.type << ' ' << cmd.id << ' ' << cmd.size() << std::endl;
@@ -138,3 +138,17 @@ int extent_server::remove(extent_protocol::extentid_t id, int &, bool iflog)
   return extent_protocol::OK;
 }
 
+int extent_server::begin_tx()
+{
+  chfs_command cmd(chfs_command::CMD_BEGIN, txid);
+  _persister->append_log(cmd);
+  return extent_protocol::OK;
+}
+
+int extent_server::commit_tx()
+{
+  chfs_command cmd(chfs_command::CMD_COMMIT, txid);
+  _persister->append_log(cmd);
+  ++txid;
+  return extent_protocol::OK;
+}

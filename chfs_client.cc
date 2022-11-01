@@ -28,6 +28,10 @@ chfs_client::chfs_client(std::string extent_dst, std::string lock_dst)
     ec = new extent_client();
     if (ec->put(1, "") != extent_protocol::OK)
         printf("error init root dir\n"); // XYB: init root dir
+
+    //这个put操作不会被log（为啥？很神奇），不必将其当做一个tx
+    //放入root后，FUSE library才会启动，程序才会正常运行，后续的操作才是tx
+
 }
 
 chfs_client::inum
@@ -140,6 +144,8 @@ chfs_client::setattr(inum ino, size_t size)
 {
     int r = OK;
 
+    ec->begin_tx();
+
     std::string content;
     extent_protocol::attr a;
     ec->getattr(ino, a);
@@ -155,6 +161,10 @@ chfs_client::setattr(inum ino, size_t size)
         content = content.substr(0, size);
         ec->put(ino, content);
     }
+
+    ec->commit_tx();
+
+    
     /*
      * your code goes here.
      * note: get the content of inode ino, and modify its content
@@ -169,6 +179,8 @@ int
 chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
 {
     int r = OK;
+
+    ec->begin_tx();
 
     // std::cout << "file name size: " <<  std::string(name).size() << std::endl;
 
@@ -209,6 +221,8 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
     //     std::cout << *(inum *)(dir.c_str() + i + ENTRY_SIZE - 8) << ' ';
     // }
     // std::cout << std::endl;
+    ec->commit_tx();
+    
 
 
     return r;
@@ -219,6 +233,7 @@ int
 chfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &ino_out)
 {
     int r = OK;
+    ec->begin_tx();
 
     /*
      * your code goes here.
@@ -244,6 +259,8 @@ chfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &ino_out)
     dir.append(dir_entry, ENTRY_SIZE);
     ec->put(parent, dir);
 
+    ec->commit_tx();
+    
 
     return r;
 }
@@ -345,6 +362,8 @@ chfs_client::write(inum ino, size_t size, off_t off, const char *data,
 
     int r = OK;
 
+    ec->begin_tx();
+
     std::string content;
     extent_protocol::attr a;
     ec->getattr(ino, a);
@@ -371,6 +390,8 @@ chfs_client::write(inum ino, size_t size, off_t off, const char *data,
      * note: write using ec->put().
      * when off > length of original file, fill the holes with '\0'.
      */
+    ec->commit_tx();
+    
 
     return r;
 }
@@ -379,6 +400,7 @@ chfs_client::write(inum ino, size_t size, off_t off, const char *data,
 int chfs_client::unlink(inum parent,const char *name)
 {
     int r = OK;
+    ec->begin_tx();
 
     // //检查是否有该文件
     bool found;
@@ -416,6 +438,8 @@ int chfs_client::unlink(inum parent,const char *name)
      * note: you should remove the file using ec->remove,
      * and update the parent directory content.
      */
+    ec->commit_tx();
+    
 
     return r;
 }
@@ -423,6 +447,7 @@ int chfs_client::unlink(inum parent,const char *name)
 int chfs_client::symlink(const char *link, inum parent, const char * name, inum &ino)
 {
     int r = OK;
+    ec->begin_tx();
 
     // bool found;
     // lookup(parent, name, found, ino_out);
@@ -444,6 +469,8 @@ int chfs_client::symlink(const char *link, inum parent, const char * name, inum 
     dir.append(dir_entry, ENTRY_SIZE);
     ec->put(parent, dir);
 
+    ec->commit_tx();
+    
 
     return r;
 

@@ -14,6 +14,8 @@ class extent_client {
  public:
   extent_client();
 
+  extent_protocol::status begin_tx();
+  extent_protocol::status commit_tx();
   extent_protocol::status create(uint32_t type, extent_protocol::extentid_t &eid);
   extent_protocol::status get(extent_protocol::extentid_t eid, 
 			                        std::string &buf);

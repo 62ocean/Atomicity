@@ -5,6 +5,7 @@
 #include <mutex>
 #include <iostream>
 #include <fstream>
+#include <set>
 #include "rpc.h"
 #include "extent_server.h"
 
@@ -191,7 +192,7 @@ public:
 
     // restore data from solid binary file
     // You may modify parameters in these functions
-    void restore_logdata(extent_server *es);
+    void restore_logdata(extent_server *es, chfs_command::txid_t &txid);
     void restore_checkpoint();
 
 private:
@@ -252,7 +253,7 @@ void persister<command>::checkpoint() {
 }
 
 template<typename command>
-void persister<command>::restore_logdata(extent_server *es) {
+void persister<command>::restore_logdata(extent_server *es, chfs_command::txid_t &txid) {
 
     std::ifstream inFile(file_path_logfile, std::ios::in | std::ios::binary);
     if (!inFile) return;
@@ -334,12 +335,22 @@ void persister<command>::restore_logdata(extent_server *es) {
     }
     inFile.close();
 
+    std::set<chfs_command::txid_t> commit_set;
     for (chfs_command cmd : log_entries) {
-        // std::cout << "type: " << cmd.type << std::endl;
-        // if (cmd.type == chfs_command::CMD_PUT) {
-        //     std::cout << ((act::put_action *)cmd.redo_act)->buf << std::endl;
-        // }
-        cmd.redo_act->perform(es);
+        if (cmd.type == chfs_command::CMD_COMMIT) {
+            commit_set.insert(cmd.id);
+        } else if (cmd.type == chfs_command::CMD_BEGIN) {
+            txid = cmd.id > txid ? cmd.id : txid;
+        }
+    }
+    for (chfs_command cmd : log_entries) {
+        if ((cmd.type == chfs_command::CMD_CREATE ||
+            cmd.type == chfs_command::CMD_PUT ||
+            cmd.type == chfs_command::CMD_REMOVE) &&
+            commit_set.count(cmd.id)) {
+                cmd.redo_act->perform(es);
+            }
+        
     }
 
     //restore后释放掉log_entry的内存
@@ -348,6 +359,7 @@ void persister<command>::restore_logdata(extent_server *es) {
         if (cmd.undo_act) delete cmd.undo_act;
     }
     log_entries.clear();
+    ++txid;
 
 };
 

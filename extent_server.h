@@ -27,8 +27,13 @@ class extent_server {
   chfs_persister *_persister;
 
  public:
+  typedef unsigned long long txid_t;
+  txid_t txid = 0;
+
   extent_server();
 
+  int begin_tx();
+  int commit_tx();
   int create(uint32_t type, extent_protocol::extentid_t &id, bool iflog = true);
   int put(extent_protocol::extentid_t id, std::string, int &, bool iflog = true);
   int get(extent_protocol::extentid_t id, std::string &);

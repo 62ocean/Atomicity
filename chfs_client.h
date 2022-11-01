@@ -37,6 +37,8 @@ class chfs_client {
   static std::string filename(inum);
   static inum n2i(std::string);
 
+  unsigned long long txid = 1;
+
  public:
   chfs_client();
   chfs_client(std::string, std::string);
