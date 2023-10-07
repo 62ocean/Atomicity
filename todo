@@ -1,0 +1,12 @@
+restore后把vector清掉释放内存，记得手动释放指针
+undo操作有问题，后续如要使用到还要再更改
+（in-memory database中，需用到undo操作的情况只有Abort，restore无需undo）
+
+问一下create的undo操作怎么设计
+
+如果log size太大，先把undo去掉吧
+
+根据添加的begin/commit更改transfer和restore
+在chfs_client中加begin commit
+
+读取的时候要找到当前的txid并继续写入

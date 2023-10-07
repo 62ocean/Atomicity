@@ -163,7 +163,7 @@ chfs_client::setattr(inum ino, size_t size)
     }
 
     ec->commit_tx();
-
+    ec->checkpoint();
     
     /*
      * your code goes here.
@@ -222,6 +222,7 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
     // }
     // std::cout << std::endl;
     ec->commit_tx();
+    ec->checkpoint();
     
 
 
@@ -260,6 +261,7 @@ chfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &ino_out)
     ec->put(parent, dir);
 
     ec->commit_tx();
+    ec->checkpoint();
     
 
     return r;
@@ -391,6 +393,7 @@ chfs_client::write(inum ino, size_t size, off_t off, const char *data,
      * when off > length of original file, fill the holes with '\0'.
      */
     ec->commit_tx();
+    ec->checkpoint();
     
 
     return r;
@@ -439,6 +442,7 @@ int chfs_client::unlink(inum parent,const char *name)
      * and update the parent directory content.
      */
     ec->commit_tx();
+    ec->checkpoint();
     
 
     return r;
@@ -470,6 +474,7 @@ int chfs_client::symlink(const char *link, inum parent, const char * name, inum 
     ec->put(parent, dir);
 
     ec->commit_tx();
+    ec->checkpoint();
     
 
     return r;

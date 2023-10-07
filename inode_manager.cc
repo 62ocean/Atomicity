@@ -1,4 +1,5 @@
 #include "inode_manager.h"
+#include <fstream>
 
 // disk layer -----------------------------------------
 
@@ -423,4 +424,51 @@ inode_manager::remove_file(uint32_t inum)
   delete ino;
   
   return;
+}
+
+void inode_manager::save_current_disk(std::string pathname)
+{
+  bm->save_current_disk(pathname);
+}
+void block_manager::save_current_disk(std::string pathname)
+{
+  d->save_current_disk(pathname);
+}
+void disk::save_current_disk(std::string pathname)
+{
+  std::ofstream outFile(pathname, std::ios::binary | std::ios::trunc);
+    // std::cout << file_path_logfile << std::endl;
+    if (!outFile) std::cout << "open file error!!!\n";
+
+    outFile.write((char *)blocks, DISK_SIZE);
+
+    outFile.close();
+}
+
+void inode_manager::restore_current_disk(std::string pathname)
+{
+  bm->restore_current_disk(pathname);
+}
+void block_manager::restore_current_disk(std::string pathname)
+{
+  d->restore_current_disk(pathname);
+}
+void disk::restore_current_disk(std::string pathname)
+{
+  std::ifstream inFile(pathname, std::ios::in | std::ios::binary);
+  if (!inFile) return;
+
+  // unsigned char *disk;
+  // uint32_t size;
+  // im->get_current_disk(disk, size);
+
+  // unsigned char ch;
+
+  // for (int i = 0; i < size; ++i) {
+  //     inFile.read((char *)&ch, sizeof(unsigned char));
+  //     *(disk + i) = ch;
+  // }
+  inFile.read((char *)blocks, DISK_SIZE);
+
+  inFile.close();
 }

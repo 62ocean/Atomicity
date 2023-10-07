@@ -32,6 +32,7 @@ class extent_server {
 
   extent_server();
 
+  int checkpoint();
   int begin_tx();
   int commit_tx();
   int create(uint32_t type, extent_protocol::extentid_t &id, bool iflog = true);

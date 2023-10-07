@@ -1,4 +1,4 @@
-# **Lab 2A: Atomicity**
+# **Atomicity**
 
 **Hand out: Oct. 20, 2022**
 

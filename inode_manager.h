@@ -22,6 +22,9 @@ class disk {
   disk();
   void read_block(uint32_t id, char *buf);
   void write_block(uint32_t id, const char *buf);
+
+  void save_current_disk(std::string pathname);
+  void restore_current_disk(std::string pathname);
 };
 
 // block layer -----------------------------------------
@@ -49,6 +52,9 @@ class block_manager {
   void free_block(uint32_t id);
   void read_block(uint32_t id, char *buf);
   void write_block(uint32_t id, const char *buf);
+
+  void save_current_disk(std::string pathname);
+  void restore_current_disk(std::string pathname);
 };
 
 // inode layer -----------------------------------------
@@ -101,6 +107,9 @@ class inode_manager {
   void write_file(uint32_t inum, const char *buf, int size);
   void remove_file(uint32_t inum);
   void get_attr(uint32_t inum, extent_protocol::attr &a);
+
+  void save_current_disk(std::string pathname);
+  void restore_current_disk(std::string pathname);
 };
 
 #endif

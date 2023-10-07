@@ -8,6 +8,7 @@
 #include <set>
 #include "rpc.h"
 #include "extent_server.h"
+#include "inode_manager.h"
 
 #define MAX_LOG_SZ 131072
 
@@ -188,12 +189,12 @@ public:
     // persist data into solid binary file
     // You may modify parameters in these functions
     void append_log(const command& log);
-    void checkpoint();
+    void checkpoint(inode_manager *im);
 
     // restore data from solid binary file
     // You may modify parameters in these functions
     void restore_logdata(extent_server *es, chfs_command::txid_t &txid);
-    void restore_checkpoint();
+    void restore_checkpoint(inode_manager *im);
 
 private:
     std::mutex mtx;
@@ -229,15 +230,14 @@ persister<command>::~persister() {
 template<typename command>
 void persister<command>::append_log(const command& log) {
     
-    // Your code here for lab2A
     
     //open和write必须要在同一个函数中，但是why？
     std::ofstream outFile(file_path_logfile, std::ios::binary | std::ios::app);
-    std::cout << file_path_logfile << std::endl;
+    // std::cout << file_path_logfile << std::endl;
     if (!outFile) std::cout << "open file error!!!\n";
     
     std::string log_str = log.transfer();
-    std::cout << log_str << std::endl;
+    // std::cout << log_str << std::endl;
     // int a = 1;
     // outFile.write((char *)&a, sizeof(int));
     outFile.write((char *)log_str.c_str(), log_str.size());
@@ -247,9 +247,28 @@ void persister<command>::append_log(const command& log) {
 }
 
 template<typename command>
-void persister<command>::checkpoint() {
-    // Your code here for lab2A
+void persister<command>::checkpoint(inode_manager *im) {
 
+    im->save_current_disk(file_path_checkpoint);
+
+    //如果在二者中间crash怎么办？会出错吧？
+
+    if (remove(file_path_logfile.c_str())) {
+        std::cout << "删除log文件失败\n";
+    }
+    // std::ofstream outFile(file_path_checkpoint, std::ios::binary | std::ios::app);
+    // // std::cout << file_path_logfile << std::endl;
+    // if (!outFile) std::cout << "open file error!!!\n";
+    
+    // unsigned char *disk;
+    // uint32_t size;
+    // im->get_current_disk(disk, size);
+
+    // outFile.write((char *)disk, size);
+
+    // outFile.close();
+
+    //还要删掉log！！
 }
 
 template<typename command>
@@ -364,8 +383,9 @@ void persister<command>::restore_logdata(extent_server *es, chfs_command::txid_t
 };
 
 template<typename command>
-void persister<command>::restore_checkpoint() {
-    // Your code here for lab2A
+void persister<command>::restore_checkpoint(inode_manager *im) {
+    
+    im->restore_current_disk(file_path_checkpoint);
 
 };
 

@@ -72,4 +72,11 @@ extent_client::commit_tx()
   return ret;
 }
 
+extent_protocol::status 
+extent_client::checkpoint()
+{
+  extent_protocol::status ret = extent_protocol::OK;
+  ret = es->checkpoint();
+  return ret;
+}
 
